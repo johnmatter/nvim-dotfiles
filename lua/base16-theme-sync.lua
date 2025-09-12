@@ -1,0 +1,181 @@
+-- Base16 Theme synchronization module
+local M = {}
+
+-- Single source of truth for current theme
+M.theme_file = vim.fn.expand(vim.env.HOME .. '/.config/.theme')
+
+-- Function to get available base16 themes
+function M.get_available_themes()
+  local themes = {}
+  local theme_variants = {} -- Track both regular and 256 variants
+  local kitty_theme_dir = vim.fn.expand(vim.env.HOME .. '/.config/base16-kitty/colors')
+
+  if vim.fn.isdirectory(kitty_theme_dir) == 1 then
+    local files = vim.fn.globpath(kitty_theme_dir, 'base16-*.conf', false, true)
+    for _, file in ipairs(files) do
+      local filename = vim.fn.fnamemodify(file, ':t')
+      
+      -- Check for regular theme first
+      local regular_theme = filename:match("^base16%-(.-)%.conf$")
+      if regular_theme and not regular_theme:match("%-256$") then
+        theme_variants[regular_theme] = { regular = true, variant_256 = theme_variants[regular_theme] and theme_variants[regular_theme].variant_256 or false }
+      end
+      
+      -- Check for 256 variant
+      local variant_256_theme = filename:match("^base16%-(.-)%-256%.conf$")
+      if variant_256_theme then
+        theme_variants[variant_256_theme] = { regular = theme_variants[variant_256_theme] and theme_variants[variant_256_theme].regular or false, variant_256 = true }
+      end
+    end
+    
+    -- Build final theme list: prefer regular themes, only include 256-only themes if no regular version exists
+    for theme_name, variants in pairs(theme_variants) do
+      -- Only add regular themes, or 256-only themes if no regular version exists
+      if variants.regular or (variants.variant_256 and not variants.regular) then
+        table.insert(themes, theme_name)
+      end
+    end
+  end
+
+  -- Sort themes alphabetically
+  table.sort(themes)
+  return themes
+end
+
+-- Function to read current theme from file
+function M.get_current_theme()
+  if vim.fn.filereadable(M.theme_file) == 1 then
+    local lines = vim.fn.readfile(M.theme_file)
+    if #lines > 0 then
+      return vim.trim(lines[1])
+    end
+  end
+  return "gruvbox-dark-hard" -- default theme
+end
+
+-- Function to apply theme to all applications
+function M.set_theme(theme_name)
+  -- Validate theme exists
+  local kitty_theme_path = vim.fn.expand(vim.env.HOME .. '/.config/base16-kitty/colors/base16-' .. theme_name .. '.conf')
+  local kitty_256_theme_path = vim.fn.expand(vim.env.HOME .. '/.config/base16-kitty/colors/base16-' .. theme_name .. '-256.conf')
+
+  -- Prefer 256-color variant if it exists
+  local final_kitty_path = kitty_256_theme_path
+  if vim.fn.filereadable(kitty_256_theme_path) == 0 then
+    final_kitty_path = kitty_theme_path
+  end
+
+  if vim.fn.filereadable(final_kitty_path) == 0 then
+    vim.schedule(function()
+      vim.notify("Base16 theme '" .. theme_name .. "' not found", vim.log.levels.ERROR)
+    end)
+    return
+  end
+
+  -- Apply Neovim base16 colorscheme first
+  -- Remove -256 suffix for nvim since it only has regular variants
+  local nvim_theme_name = theme_name:gsub("%-256$", "")
+  local nvim_theme = "base16-" .. nvim_theme_name
+  local nvim_success = pcall(function()
+    vim.cmd.colorscheme(nvim_theme)
+  end)
+
+  if nvim_success then
+    -- Write theme to our single source of truth file only after nvim success
+    vim.fn.writefile({theme_name}, M.theme_file)
+
+    -- Apply Kitty theme by updating the theme.conf file
+    local kitty_theme_conf = vim.fn.expand(vim.env.HOME .. '/.config/kitty/theme.conf')
+    local kitty_success = pcall(function()
+      -- Copy the selected theme to theme.conf
+      local theme_content = vim.fn.readfile(final_kitty_path)
+      vim.fn.writefile(theme_content, kitty_theme_conf)
+    end)
+
+    if kitty_success then
+      -- Try to apply via remote control (non-blocking)
+      vim.loop.spawn('kitty', {
+        args = {
+          '@',
+          'set-colors',
+          '--all',
+          final_kitty_path
+        }
+      }, function(code, signal)
+        -- Schedule notifications to avoid fast event context issues
+        vim.schedule(function()
+          if code == 0 then
+            vim.notify("Base16 theme '" .. theme_name .. "' applied successfully", vim.log.levels.INFO)
+          -- else
+            -- vim.notify("Base16 theme '" .. theme_name .. "' saved to theme.conf. Restart kitty or open a new tab to see changes.", vim.log.levels.INFO)
+          end
+        end)
+      end)
+    else
+      vim.schedule(function()
+        vim.notify("Failed to write kitty theme file", vim.log.levels.ERROR)
+      end)
+    end
+  else
+    vim.schedule(function()
+      vim.notify("Failed to apply Neovim colorscheme: " .. nvim_theme, vim.log.levels.ERROR)
+    end)
+  end
+
+  -- Apply shell theme (for fish integration)
+  local shell_script = vim.fn.expand(vim.env.HOME .. '/.config/base16-shell/scripts/base16-' .. theme_name .. '.sh')
+  if vim.fn.filereadable(shell_script) == 1 then
+    vim.loop.spawn('bash', {
+      args = { shell_script }
+    }, nil)
+  end
+end
+
+-- Function to initialize theme from file
+function M.initialize_theme()
+  -- Schedule theme initialization to avoid fast event context issues
+  vim.schedule(function()
+    local current_theme = M.get_current_theme()
+    M.set_theme(current_theme)
+  end)
+end
+
+-- Function to create theme preview content for telescope
+function M.create_theme_preview(theme_name)
+  local preview_lines = {
+    "# Base16 Theme: " .. theme_name,
+    "",
+    "## Color Preview",
+    "This theme uses the Base16 color framework for consistent",
+    "colors across Kitty terminal, Neovim, and Fish shell.",
+    "",
+    "### Benefits:",
+    "• True color consistency across all applications",
+    "• Standardized 16-color palette",
+    "• Hundreds of available themes",
+    "• Perfect synchronization",
+    "",
+    "### Syntax Highlighting Preview:",
+    "```lua",
+    "-- This is a comment",
+    "local function hello(name)",
+    "  local message = \"Hello, \" .. name .. \"!\"",
+    "  print(message)",
+    "  return true",
+    "end",
+    "```",
+    "",
+    "```python",
+    "# This is a comment",
+    "def hello(name):",
+    "    message = f\"Hello, {name}!\"",
+    "    print(message)",
+    "    return True",
+    "```",
+    "",
+    "**Current theme:** " .. theme_name
+  }
+  return preview_lines
+end
+
+return M
