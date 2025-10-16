@@ -3,20 +3,18 @@
 vim.g.project_root = vim.fn.getcwd()
 
 
---   __       _     _     
---  / _| ___ | | __| |___ 
+--   __       _     _
+--  / _| ___ | | __| |___
 -- | |_ / _ \| |/ _` / __|
 -- |  _| (_) | | (_| \__ \
 -- |_|  \___/|_|\__,_|___/
 
-vim.opt.foldmethod = 'indent'
 vim.opt.foldlevel = 99
 vim.opt.foldlevelstart = 3
 vim.opt.foldnestmax = 5
 
 -- plugins
 require('config.lazy')
-require('lualine').setup()
 
 local scnvim = require 'scnvim'
 local map = scnvim.map
@@ -62,32 +60,38 @@ scnvim.setup({
   },
 })
 
--- vim.api.nvim_create_autocmd("VimEnter", {
---   callback = function()
---     vim.cmd("vertical topleft 30vsplit | SnacksExplorer")
---   end
--- })
+--            _
+--   ___ ___ | | ___  _ __ ___
+--  / __/ _ \| |/ _ \| '__/ __|
+-- | (_| (_) | | (_) | |  \__ \
+--  \___\___/|_|\___/|_|  |___/
 
--- quick keymaps
-vim.keymap.set('n', '<leader>q', ':q<cr>')
-vim.keymap.set('n', '<leader>x', ':qa<cr>')
-vim.keymap.set('n', '<leader>w', ':w<cr>')
-vim.keymap.set('n', '<leader>t', ':tabnew<cr>')
-vim.keymap.set('n', '<leader>kj', 'gT')
-vim.keymap.set('n', '<leader>jk', 'gt')
-
--- colors
 vim.opt.termguicolors = true
 
--- set cursorline, with an autocmd to apply whenever colorscheme changes
+-- set cursorline and visual selection colors, with an autocmd to apply whenever colorscheme changes
 _G.custom_cursorline_color = "#18573e"
+_G.custom_cursorline_fg = "#cac0ae"
+_G.custom_visual_fg = "#cac0ae"
+_G.custom_visual_bg = "#4c7842"
+
 vim.api.nvim_set_hl(0, "CursorLine", {
+  fg = _G.custom_cursorline_fg,
   bg = _G.custom_cursorline_color,
 })
+vim.api.nvim_set_hl(0, "Visual", {
+  fg = _G.custom_visual_fg,
+  bg = _G.custom_visual_bg,
+})
+
 vim.api.nvim_create_autocmd("ColorScheme", {
   callback = function()
     vim.api.nvim_set_hl(0, "CursorLine", {
+      fg = _G.custom_cursorline_fg,
       bg = _G.custom_cursorline_color,
+    })
+    vim.api.nvim_set_hl(0, "Visual", {
+      fg = _G.custom_visual_fg,
+      bg = _G.custom_visual_bg,
     })
   end,
 })
@@ -109,16 +113,18 @@ end, {
   desc = 'Set Base16 theme for Kitty, Neovim, and Fish'
 })
 
-vim.api.nvim_set_hl(0, "Visual", {
-  fg = "#cac0ae",
-  bg = "#4c7842",
-})
+--            _                        _
+--  _ __ ___ (_)___  ___    ___  _ __ | |_ ___
+-- | '_ ` _ \| / __|/ __|  / _ \| '_ \| __/ __|
+-- | | | | | | \__ \ (__  | (_) | |_) | |_\__ \
+-- |_| |_| |_|_|___/\___|  \___/| .__/ \__|___/
+--                              |_|
 
 vim.o.mouse = 'a'
 vim.opt.wrap = true
 vim.opt.linebreak = true
 vim.opt.showbreak = "↪ "
--- vim.o.showmode = false
+vim.o.showmode = false -- Hide mode indicator since lualine already shows it
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.signcolumn = "number"
@@ -139,22 +145,10 @@ vim.o.undofile = true
 vim.o.ignorecase = true
 vim.o.smartcase = true
 
--- splits
-vim.o.splitright = true
-vim.o.splitbelow = true
+-- Note: `map` was previously used for scnvim.map (lines 20-21) but that's no longer in scope
+-- Redefining here as vim.keymap.set for convenience in split/window keymaps
 local map = vim.keymap.set
 local opts = { noremap = true, silent = true }
-
--- Split to the right
-map('n', '<leader>ll', ':vsplit<CR>', opts)
-map('n', '<leader>jj', ':split<CR>', opts)
-map('n', '<leader>kk', ':split<CR><C-w>k', opts)
-map('n', '<leader>hh', ':vsplit<CR><C-w>h', opts)
-
-map('n', '<leader>wh', '<C-w><C-h>', { desc = 'Move focus to the left window' })
-map('n', '<leader>wl', '<C-w><C-l>', { desc = 'Move focus to the right window' })
-map('n', '<leader>wj', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
-map('n', '<leader>wk', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
 
 -- display whitespace
 vim.o.list = true
@@ -170,8 +164,34 @@ vim.o.scrolloff = 10
 -- if e.g. :q would fail because of unsaved changes, prompt to save
 vim.o.confirm = true
 
--- clear highlights in normal mode
-vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+--            _ _ _
+--  ___ _ __ | (_) |_ ___
+-- / __| '_ \| | | __/ __|
+-- \__ \ |_) | | | |_\__ \
+-- |___/ .__/|_|_|\__|___/
+--     |_|
+
+-- splits
+vim.o.splitright = true
+vim.o.splitbelow = true
+
+map('n', '<leader>ll', ':vsplit<CR>', opts)
+map('n', '<leader>jj', ':split<CR>', opts)
+map('n', '<leader>kk', ':split<CR><C-w>k', opts)
+map('n', '<leader>hh', ':vsplit<CR><C-w>h', opts)
+
+map('n', '<leader>wh', '<C-w><C-h>', { desc = 'Move focus to the left window' })
+map('n', '<leader>wl', '<C-w><C-l>', { desc = 'Move focus to the right window' })
+map('n', '<leader>wj', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
+map('n', '<leader>wk', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
+
+
+--       _ _       _                         _
+--   ___| (_)_ __ | |__   ___   __ _ _ __ __| |
+--  / __| | | '_ \| '_ \ / _ \ / _` | '__/ _` |
+-- | (__| | | |_) | |_) | (_) | (_| | | | (_| |
+--  \___|_|_| .__/|_.__/ \___/ \__,_|_|  \__,_|
+--          |_|
 
 -- clipboard sync state
 _G.clipboard_sync_enabled = false
@@ -204,30 +224,6 @@ vim.api.nvim_create_autocmd('TextYankPost', {
     vim.hl.on_yank()
   end,
 })
-
--- -- aider
--- local function update_aider_watch_list()
---   local files = {}
---   local seen = {}
---   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
---     if vim.api.nvim_buf_is_loaded(buf) then
---       local name = vim.api.nvim_buf_get_name(buf)
---       if name ~= '' and vim.fn.filereadable(name) == 1 and
---          name:find(vim.g.project_root, 1, true) == 1 and not seen[name] then
---         table.insert(files, name)
---         seen[name] = true
---       end
---     end
---   end
---   local path = vim.fn.expand("~/.aider-watch-list")
---   vim.fn.writefile(files, path)
--- end
--- vim.api.nvim_create_augroup("AiderWatchSync", {clear=true})
--- vim.api.nvim_create_autocmd({"BufEnter", "BufWritePost"}, {
---    pattern = "*",
---    callback = update_aider_watch_list,
---    group = "AiderWatchSync",
--- })
 
 -- oil
 function _G.get_oil_winbar()
@@ -291,9 +287,8 @@ end
 vim.keymap.set("n", "<Leader>fp", browse_and_insert_path, { desc = "Insert file path at cursor" })
 vim.keymap.set("i", "<C-g>", browse_and_insert_path, { desc = "Insert file path at cursor" }) -- Changed from <C-f> to avoid neoscroll/blink conflicts
 
--- vim.keymap.set('n', '<leader>o', ':Oil<CR>')
 vim.keymap.set("n", "<leader>o", function()
-  vim.cmd("vsplit | wincmd l")
+  vim.cmd("vsplit | wincmd h")
   require("oil").open()
 end)
 
@@ -324,19 +319,16 @@ require("lualine").setup {
   },
 }
 
-
--- --                     _
--- --  _ __ ___ _ __   __| | ___ _ __
--- -- | '__/ _ \ '_ \ / _` |/ _ \ '__|
--- -- | | |  __/ | | | (_| |  __/ |
--- -- |_|  \___|_| |_|\__,_|\___|_|
--- --
+--                     _
+--  _ __ ___ _ __   __| | ___ _ __
+-- | '__/ _ \ '_ \ / _` |/ _ \ '__|
+-- | | |  __/ | | | (_| |  __/ |
+-- |_|  \___|_| |_|\__,_|\___|_|
 --                       _       _
 --  _ __ ___   __ _ _ __| | ____| | _____      ___ __
 -- | '_ ` _ \ / _` | '__| |/ / _` |/ _ \ \ /\ / / '_ \
 -- | | | | | | (_| | |  |   < (_| | (_) \ V  V /| | | |
 -- |_| |_| |_|\__,_|_|  |_|\_\__,_|\___/ \_/\_/ |_| |_|
-require("render-markdown").setup()
 vim.api.nvim_create_autocmd("ColorScheme", {
   pattern = "*",
   callback = function()
@@ -359,3 +351,23 @@ local modes = { 'n', 'v', 'x' }
 for key, func in pairs(keymap) do
   vim.keymap.set(modes, key, func)
 end
+
+local vb = require("visualblock-reselect")
+vim.keymap.set("x", "<leader>vv", vb.save, { desc = "Save block selection" })
+vim.keymap.set("n", "<leader>vb", vb.restore, { desc = "Restore block selection" })
+
+--  _
+-- | | _____ _   _ _ __ ___   __ _ _ __  ___
+-- | |/ / _ \ | | | '_ ` _ \ / _` | '_ \/ __|
+-- |   <  __/ |_| | | | | | | (_| | |_) \__ \
+-- |_|\_\___|\__, |_| |_| |_|\__,_| .__/|___/
+--           |___/                |_|
+
+vim.keymap.set('n', '<leader>q', ':q<cr>')
+vim.keymap.set('n', '<leader>x', ':qa<cr>')
+vim.keymap.set('n', '<leader>w', ':w<cr>')
+vim.keymap.set('n', '<leader>t', ':tabnew<cr>')
+vim.keymap.set('n', '<leader>kj', 'gT')
+vim.keymap.set('n', '<leader>jk', 'gt')
+vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+

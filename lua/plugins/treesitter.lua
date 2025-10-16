@@ -14,6 +14,7 @@ return {
       'luadoc',
       'markdown',
       'markdown_inline',
+      'python',
       'query',
       'supercollider',
       'vim',
@@ -26,4 +27,4 @@ return {
     },
     indent = { enable = true, disable = { 'ruby' } },
   },
-} 
+}

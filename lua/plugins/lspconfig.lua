@@ -9,15 +9,52 @@ return {
     'WhoIsSethDaniel/mason-tool-installer.nvim',
 
     -- Useful status updates for LSP.
-    { 'j-hui/fidget.nvim', opts = {} },
+    { 'j-hui/fidget.nvim',    opts = {} },
 
     -- Use blink.cmp for completion capabilities
     'saghen/blink.cmp',
   },
   config = function()
+    -- Global LSP client filter - runs before any LSP functionality
+    vim.api.nvim_create_autocmd('LspAttach', {
+      group = vim.api.nvim_create_augroup('kickstart-lsp-filter', { clear = true }),
+      callback = function(event)
+        local bufname = vim.api.nvim_buf_get_name(event.buf)
+        local filetype = vim.bo[event.buf].filetype
+        
+        -- Stop LSP clients for special buffers
+        if bufname:match('diffview://') or 
+           bufname:match('^diffview:') or 
+           bufname:match('^fugitive://') or
+           bufname:match('^oil://') or
+           filetype:match('Diffview') or
+           filetype:match('^git') then
+          
+          local client = vim.lsp.get_client_by_id(event.data.client_id)
+          if client then
+            client.stop()
+            return
+          end
+        end
+      end,
+    })
+
+    -- Prevent LSP attachment to special buffers (diffview, fugitive, oil, etc.)
     vim.api.nvim_create_autocmd('LspAttach', {
       group = vim.api.nvim_create_augroup('kickstart-lsp-attach', { clear = true }),
       callback = function(event)
+        local bufname = vim.api.nvim_buf_get_name(event.buf)
+        local filetype = vim.bo[event.buf].filetype
+        
+        -- Skip LSP attachment for special buffers
+        if bufname:match('diffview://') or 
+           bufname:match('^diffview:') or 
+           bufname:match('^fugitive://') or
+           bufname:match('^oil://') or
+           filetype:match('Diffview') or
+           filetype:match('^git') then
+          return
+        end
         -- Create a function that lets us more easily define mappings specific for LSP related
         -- items. It sets the mode, buffer and description for us each time.
         local map = function(keys, func, desc, mode)
@@ -61,6 +98,11 @@ return {
         --  Useful when you're not sure what type a variable is and you want to see
         --  the definition of its *type*, not where it was *defined*.
         map('grt', require('telescope.builtin').lsp_type_definitions, '[G]oto [T]ype Definition')
+
+        -- Format code using LSP
+        if client and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_formatting, event.buf) then
+          map('<leader>f', vim.lsp.buf.format, '[F]ormat code')
+        end
 
         -- This function resolves a difference between neovim nightly (version 0.11) and stable (version 0.10)
         ---@param client vim.lsp.Client
@@ -108,10 +150,11 @@ return {
         -- code, if the language server you are using supports them
         --
         -- This may be unwanted, since they displace some of your code
+        -- Changed from <leader>th to <leader>ti to avoid conflict with theme picker
         if client and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_inlayHint, event.buf) then
-          map('<leader>th', function()
+          map('<leader>ti', function()
             vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf })
-          end, '[T]oggle Inlay [H]ints')
+          end, '[T]oggle [I]nlay hints')
         end
       end,
     })
@@ -145,8 +188,8 @@ return {
       },
     }
 
-          -- blink.cmp capabilities for LSP
-      local capabilities = require('blink.cmp').get_lsp_capabilities()
+    -- blink.cmp capabilities for LSP
+    local capabilities = require('blink.cmp').get_lsp_capabilities()
 
     -- Enable the following language servers
     --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
@@ -158,7 +201,21 @@ return {
     --  - settings (table): Override the default settings passed when initializing the server.
     --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
     local servers = {
-      -- clangd = {},
+      clangd = {
+        settings = {
+          clangd = {
+            arguments = {
+              '--background-index',
+              '--clang-tidy',
+              '--header-insertion=iwyu',
+              '--completion-style=detailed',
+              '--function-arg-placeholders',
+              '--fallback-style=file',
+              '--style=' .. vim.fn.expand('~/.config/nvim/.clang-format')
+            }
+          }
+        }
+      },
       -- gopls = {},
       -- pyright = {},
       -- rust_analyzer = {},
@@ -207,6 +264,8 @@ return {
     vim.list_extend(ensure_installed, {
       'stylua',
       'marksman',
+      'clangd',
+      'clang-format',
     })
     require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -217,9 +276,45 @@ return {
         function(server_name)
           local server = servers[server_name] or {}
           server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
+          
+          -- Add buffer filtering to prevent LSP attachment to special buffers
+          local original_on_attach = server.on_attach
+          server.on_attach = function(client, bufnr)
+            local bufname = vim.api.nvim_buf_get_name(bufnr)
+            local filetype = vim.bo[bufnr].filetype
+            
+            -- Stop LSP for special buffers
+            if bufname:match('diffview://') or 
+               bufname:match('^diffview:') or 
+               bufname:match('^fugitive://') or
+               bufname:match('^oil://') or
+               filetype:match('Diffview') or
+               filetype:match('^git') then
+              client.stop()
+              return
+            end
+            
+            -- Call original on_attach if it exists
+            if original_on_attach then
+              original_on_attach(client, bufnr)
+            end
+          end
+          
           require('lspconfig')[server_name].setup(server)
         end,
       },
     }
+
+    -- Formatting command aliases
+    vim.api.nvim_create_user_command('Format', function()
+      vim.lsp.buf.format()
+    end, { desc = 'Format current buffer using LSP' })
+
+    vim.api.nvim_create_user_command('ClangFormat', function()
+      vim.cmd('!clang-format -i --style=file ' .. vim.fn.expand('%'))
+      vim.cmd('edit!')
+    end, { desc = 'Format current C++ file using clang-format' })
+
+
   end,
-} 
+}

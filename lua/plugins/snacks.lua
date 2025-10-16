@@ -12,6 +12,18 @@ return {
     explorer = {
       enabled = true,
     },
+    picker = {
+      sources = {
+        explorer = {
+          layout = {
+            layout = {
+              width = 25,
+              min_width = 10,
+            }
+          }
+        }
+      }
+    },
 
     notifier = {
       background_colour = "#000000",
@@ -63,5 +75,12 @@ return {
     { "[[", function() Snacks.words.jump(-vim.v.count1) end, desc = "Prev Reference", mode = { "n", "t" } },
 
   }, -- snacks keybinds
+
+  -- Custom commands
+  vim.api.nvim_create_user_command('SnacksToggleNotifier', function()
+    Snacks.config.notifier.enabled = not Snacks.config.notifier.enabled
+    local status = Snacks.config.notifier.enabled and "enabled" or "disabled"
+    vim.notify("Snacks notifier " .. status, vim.log.levels.INFO)
+  end, { desc = "Toggle Snacks notifier on/off" }),
 
 }
