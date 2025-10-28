@@ -8,7 +8,7 @@ return {
   config = function()
     require('outline').setup {
       outline_window = {
-        position = 'left',
+        position = 'right',
         width = 25,
         relative_width = true,
         auto_close = false,
@@ -155,5 +155,28 @@ return {
         },
       },
     }
+
+    -- Set custom winbar to show filename in outline window
+    vim.api.nvim_create_autocmd('FileType', {
+      pattern = 'Outline',
+      callback = function()
+        -- Get the source buffer (the buffer being outlined)
+        local outline_bufnr = vim.api.nvim_get_current_buf()
+        local ok, outline_module = pcall(require, 'outline')
+
+        if ok and outline_module.get_source_buffer then
+          local source_buf = outline_module.get_source_buffer()
+
+          if source_buf and vim.api.nvim_buf_is_valid(source_buf) then
+            local filename = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(source_buf), ':t')
+            vim.wo.winbar = filename .. ' OUTLINE'
+          else
+            vim.wo.winbar = 'OUTLINE'
+          end
+        else
+          vim.wo.winbar = 'OUTLINE'
+        end
+      end,
+    })
   end,
 }

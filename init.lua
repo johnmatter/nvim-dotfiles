@@ -16,50 +16,6 @@ vim.opt.foldnestmax = 5
 -- plugins
 require('config.lazy')
 
-local scnvim = require 'scnvim'
-local map = scnvim.map
-local map_expr = scnvim.map_expr
-
-scnvim.setup({
-  keymaps = {
-    ['<M-e>'] = map('editor.send_line', {'i', 'n'}),
-    ['<leader>se'] = {  -- Changed from <C-e> to avoid blink.cmp conflict
-      map('editor.send_block', {'i', 'n'}),
-      map('editor.send_selection', 'x'),
-    },
-    ['<CR>'] = map('postwin.toggle'),
-    ['<M-CR>'] = map('postwin.toggle', 'i'),
-    ['<M-L>'] = map('postwin.clear', {'n', 'i'}),
-    ['<C-k>'] = map('signature.show', {'n', 'i'}),
-    ['<leader>sq'] = map('sclang.hard_stop', {'n', 'x', 'i'}), -- Changed from <F12> to avoid dial conflict
-    ['<leader>st'] = map('sclang.start'),
-    ['<leader>sk'] = map('sclang.recompile'),
-    -- ['<F1>'] = map_expr('s.boot'),
-    ['<F6>'] = map_expr('s.meter'),
-
-  },
-  editor = {
-    highlight = {
-      color = 'IncSearch',
-    },
-  },
-  postwin = {
-    float = {
-      enabled = true,
-    },
-  },
-  -- Enable completion features
-  completion = {
-    enabled = true,
-  },
-  -- Ensure signature help shows argument info
-  signature = {
-    hint = {
-      enabled = true,
-    },
-  },
-})
-
 --            _
 --   ___ ___ | | ___  _ __ ___
 --  / __/ _ \| |/ _ \| '__/ __|
@@ -83,6 +39,10 @@ vim.api.nvim_set_hl(0, "Visual", {
   bg = _G.custom_visual_bg,
 })
 
+-- Disable LSP semantic token highlighting for comment type in C++
+-- This prevents #ifdef blocks from being dimmed while keeping other semantic tokens
+vim.api.nvim_set_hl(0, "@lsp.type.comment.cpp", {})
+
 vim.api.nvim_create_autocmd("ColorScheme", {
   callback = function()
     vim.api.nvim_set_hl(0, "CursorLine", {
@@ -93,6 +53,8 @@ vim.api.nvim_create_autocmd("ColorScheme", {
       fg = _G.custom_visual_fg,
       bg = _G.custom_visual_bg,
     })
+    -- Reapply LSP comment token override after colorscheme change
+    vim.api.nvim_set_hl(0, "@lsp.type.comment.cpp", {})
   end,
 })
 
@@ -250,6 +212,38 @@ vim.api.nvim_create_user_command("Retab4to2", function()
   vim.cmd("retab")
 end, {})
 
+-- Toggle clean UI mode: git blame virtual text and diagnostics virtual text
+local ui_clean_mode = false
+local saved_diagnostic_virt_text = nil
+
+vim.keymap.set('n', '<leader>u', function()
+  ui_clean_mode = not ui_clean_mode
+
+  -- Toggle git-blame.nvim
+  vim.cmd('GitBlameToggle')
+
+  -- Toggle diagnostics virtual text
+  local current_config = vim.diagnostic.config()
+
+  if ui_clean_mode then
+    -- Turning clean mode ON: save current config and disable
+    if current_config.virtual_text then
+      saved_diagnostic_virt_text = current_config.virtual_text
+    end
+    vim.diagnostic.config({ virtual_text = false })
+  else
+    -- Turning clean mode OFF: restore saved config
+    if saved_diagnostic_virt_text then
+      vim.diagnostic.config({ virtual_text = saved_diagnostic_virt_text })
+    end
+  end
+
+  -- Show notification
+  local status = ui_clean_mode and "mute diagnostics and git blame" or "unmute diagnostics and git blame"
+  vim.notify(status, vim.log.levels.INFO)
+end, { desc = 'Toggle clean UI mode (hide git blame & diagnostics)' })
+
+-- telescope helpers
 local actions = require('telescope.actions')
 local action_state = require('telescope.actions.state')
 local builtin = require('telescope.builtin')
@@ -371,3 +365,5 @@ vim.keymap.set('n', '<leader>kj', 'gT')
 vim.keymap.set('n', '<leader>jk', 'gt')
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
+vim.keymap.set('n', '<leader>.', ':s/^/#/<CR><cmd>nohlsearch<CR>')
+vim.keymap.set('n', '<leader>,', ':s/^#//<CR><cmd>nohlsearch<CR>')

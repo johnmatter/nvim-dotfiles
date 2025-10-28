@@ -13,6 +13,9 @@ return {
 
     -- Use blink.cmp for completion capabilities
     'saghen/blink.cmp',
+
+    -- JSON schemas for jsonls
+    'b0o/schemastore.nvim',
   },
   config = function()
     -- Global LSP client filter - runs before any LSP functionality
@@ -254,6 +257,16 @@ return {
             }
           }
         }
+      },
+
+      jsonls = {
+        -- JSON Language Server with schema support
+        settings = {
+          json = {
+            schemas = require('schemastore').json.schemas(),
+            validate = { enable = true },
+          },
+        },
       },
 
     }

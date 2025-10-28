@@ -9,6 +9,7 @@ return {
       'c',
       'cpp',
       'diff',
+      'gdscript',
       'html',
       'lua',
       'luadoc',

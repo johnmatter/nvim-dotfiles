@@ -57,12 +57,13 @@ return {
   keys = {
 
     -- lazygit
-    { "<leader>lg", function() Snacks.lazygit() end, desc = "Lazygit" },
-    { "<leader>gl", function() Snacks.lazygit.log() end, desc = "Lazygit Log" },
-    { "<leader>gf", function() Snacks.lazygit.log_file() end, desc = "Lazygit Current File History" },
+    { "<leader>lg", function() Snacks.lazygit() end, desc = "[L]azy[g]it" },
+    { "<leader>gl", function() Snacks.lazygit.log() end, desc = "Lazy[g]it [L]og" },
+    { "<leader>gf", function() Snacks.lazygit.log_file() end, desc = "Lazy[g]it Current [F]ile History" },
+    { "<leader>gs", function() Snacks.picker.git_status() end, desc = "[G]it [S]tatus" },
 
     -- explorer
-    { "<leader>e", function() Snacks.explorer() end, desc = "Toggle Explorer" },
+    { "<leader>e", function() Snacks.explorer() end, desc = "Toggle [E]xplorer" },
 
     -- terminal
     { "<leader>nt", function() Snacks.terminal() end, desc = "Toggle Terminal" },

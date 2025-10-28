@@ -16,6 +16,26 @@ return {
           local icon, hl = require('nvim-web-devicons').get_icon_by_filetype(element.filetype, { default = false })
           return icon, hl
         end,
+        name_formatter = function(buf)
+          -- Custom formatter for Outline buffers
+          if buf.name and buf.name:match('^OUTLINE') then
+            -- Find the source buffer (non-outline buffer in the same tab)
+            if buf.buffers then
+              for _, bufnr in ipairs(buf.buffers) do
+                if bufnr ~= buf.bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+                  local other_name = vim.api.nvim_buf_get_name(bufnr)
+                  if other_name and other_name ~= '' and not other_name:match('OUTLINE') then
+                    local filename = vim.fn.fnamemodify(other_name, ':t')
+                    return filename .. ' OUTLINE'
+                  end
+                end
+              end
+            end
+            return 'OUTLINE'
+          end
+          -- Return default name for non-outline buffers
+          return buf.name
+        end,
       },
     })
 
