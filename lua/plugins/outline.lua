@@ -8,7 +8,7 @@ return {
   config = function()
     require('outline').setup {
       outline_window = {
-        position = 'right',
+        position = 'left',
         width = 25,
         relative_width = true,
         auto_close = false,

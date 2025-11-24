@@ -269,6 +269,43 @@ return {
         },
       },
 
+      texlab = {
+        -- LaTeX Language Server
+        settings = {
+          texlab = {
+            build = {
+              executable = 'latexmk',
+              args = { '-pdf', '-interaction=nonstopmode', '-synctex=1', '%f' },
+              onSave = false,  -- Set to true to build on save
+            },
+            forwardSearch = {
+              executable = nil,  -- Set to your PDF viewer (e.g., 'zathura', 'skim')
+              args = {},
+            },
+            chktex = {
+              onOpenAndSave = false,  -- LaTeX linter
+              onEdit = false,
+            },
+            diagnosticsDelay = 300,
+            latexFormatter = 'latexindent',
+            latexindent = {
+              modifyLineBreaks = false,
+            },
+          },
+        },
+      },
+
+      neocmakelsp = {
+        -- CMake Language Server
+        filetypes = { 'cmake' },
+        settings = {
+          neocmakelsp = {
+            format = { enable = true },
+            lint = { enable = true },
+          },
+        },
+      },
+
     }
 
     -- Ensure the servers and tools above are installed
@@ -279,6 +316,7 @@ return {
       'marksman',
       'clangd',
       'clang-format',
+      'texlab',
     })
     require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 

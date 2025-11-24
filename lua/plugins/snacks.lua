@@ -15,6 +15,7 @@ return {
     picker = {
       sources = {
         explorer = {
+          hidden = true, -- Show hidden files by default
           layout = {
             layout = {
               width = 25,
