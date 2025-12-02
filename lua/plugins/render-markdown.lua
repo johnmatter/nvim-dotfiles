@@ -4,6 +4,9 @@ return {
   ---@module 'render-markdown'
   ---@type render.md.UserConfig
   opts = {
+    bullet = {
+      icons = { '', '' },
+    },
     code = {
       conceal_delimiters = false,
       langauge_icon = false,
@@ -17,6 +20,14 @@ return {
       unchecked = {
         icon = ' ',
         highlight = 'RainbowDelimiterRed',
+      },
+      custom = {
+        todo = {
+          raw = '[-]',
+          rendered = ' ',  -- or whatever icon you want
+          highlight = 'RenderMarkdownTodo',
+          scope_highlight = nil,
+        },
       }
     },
   },
