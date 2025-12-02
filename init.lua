@@ -360,7 +360,137 @@ vim.keymap.set("n", "<leader>vb", vb.restore, { desc = "Restore block selection"
 vim.keymap.set('n', '<leader>q', ':q<cr>')
 vim.keymap.set('n', '<leader>x', ':qa<cr>')
 vim.keymap.set('n', '<leader>w', ':w<cr>')
-vim.keymap.set('n', '<leader>t', ':tabnew<cr>')
+vim.keymap.set('n', '<leader>tn', ':tabnew<cr>')
+
+-- Duplicate current tab with all windows/splits
+local function duplicate_tab()
+  local orig_tab = vim.api.nvim_get_current_tabpage()
+
+  -- Save original window sizes to restore later
+  local orig_win_sizes = {}
+  for _, win in ipairs(vim.api.nvim_tabpage_list_wins(orig_tab)) do
+    orig_win_sizes[win] = {
+      width = vim.api.nvim_win_get_width(win),
+      height = vim.api.nvim_win_get_height(win),
+    }
+  end
+
+  local layout = vim.fn.winlayout()
+
+  -- Check if a window has a normal buffer we can duplicate
+  local function is_normal_buffer(win)
+    local buf = vim.api.nvim_win_get_buf(win)
+    local buftype = vim.bo[buf].buftype
+    return buftype == '' or buftype == 'acwrite'
+  end
+
+  -- Get window info
+  local function get_win_info(win)
+    return {
+      buf = vim.api.nvim_win_get_buf(win),
+      width = vim.api.nvim_win_get_width(win),
+      height = vim.api.nvim_win_get_height(win),
+    }
+  end
+
+  -- Filter layout to remove special buffer windows
+  local function filter_layout(node)
+    if node[1] == 'leaf' then
+      local win = node[2]
+      if is_normal_buffer(win) then
+        return { 'leaf', win, info = get_win_info(win) }
+      else
+        return nil -- Remove this window
+      end
+    else
+      local kind = node[1]
+      local children = node[2]
+      local filtered = {}
+      for _, child in ipairs(children) do
+        local result = filter_layout(child)
+        if result then
+          table.insert(filtered, result)
+        end
+      end
+      if #filtered == 0 then
+        return nil
+      elseif #filtered == 1 then
+        return filtered[1] -- Flatten single child
+      else
+        return { kind, filtered }
+      end
+    end
+  end
+
+  local filtered_layout = filter_layout(layout)
+  if not filtered_layout then
+    vim.notify('No normal buffers to duplicate', vim.log.levels.WARN)
+    return
+  end
+
+  -- Create new tab
+  vim.cmd('tabnew')
+  local new_tab_wins = {}
+
+  -- Recreate filtered layout
+  local function recreate_layout(node)
+    if node[1] == 'leaf' then
+      local cur_win = vim.api.nvim_get_current_win()
+      local info = node.info
+      if info and info.buf and vim.api.nvim_buf_is_valid(info.buf) then
+        vim.api.nvim_win_set_buf(cur_win, info.buf)
+      end
+      table.insert(new_tab_wins, { win = cur_win, info = info })
+      return cur_win
+    else
+      local kind = node[1]
+      local children = node[2]
+      local first_win = recreate_layout(children[1])
+      for i = 2, #children do
+        vim.api.nvim_set_current_win(first_win)
+        if kind == 'row' then
+          vim.cmd('wincmd v')
+          vim.cmd('wincmd l')
+        else
+          vim.cmd('wincmd s')
+          vim.cmd('wincmd j')
+        end
+        recreate_layout(children[i])
+      end
+      return first_win
+    end
+  end
+  recreate_layout(filtered_layout)
+
+  -- Apply sizes
+  for _, entry in ipairs(new_tab_wins) do
+    if entry.info and vim.api.nvim_win_is_valid(entry.win) then
+      pcall(vim.api.nvim_win_set_width, entry.win, entry.info.width)
+      pcall(vim.api.nvim_win_set_height, entry.win, entry.info.height)
+    end
+  end
+  -- Second pass for stability
+  for _, entry in ipairs(new_tab_wins) do
+    if entry.info and vim.api.nvim_win_is_valid(entry.win) then
+      pcall(vim.api.nvim_win_set_width, entry.win, entry.info.width)
+      pcall(vim.api.nvim_win_set_height, entry.win, entry.info.height)
+    end
+  end
+
+  -- Restore original tab's window sizes
+  vim.api.nvim_set_current_tabpage(orig_tab)
+  for win, sizes in pairs(orig_win_sizes) do
+    if vim.api.nvim_win_is_valid(win) then
+      pcall(vim.api.nvim_win_set_width, win, sizes.width)
+      pcall(vim.api.nvim_win_set_height, win, sizes.height)
+    end
+  end
+
+  -- Go back to the new tab
+  vim.cmd('tabnext')
+end
+
+vim.keymap.set('n', '<leader>td', duplicate_tab, { desc = 'Duplicate tab with all panes' })
 vim.keymap.set('n', '<leader>kj', 'gT')
 vim.keymap.set('n', '<leader>jk', 'gt')
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
