@@ -95,6 +95,13 @@ return {
         },
       },
       symbols = {
+        icon_fetcher = function(kind, bufnr, symbol)
+          local ft = vim.api.nvim_get_option_value("ft", { buf = bufnr })
+          if ft == 'markdown' and kind == 'String' then
+            return '#'
+          end
+          return false
+        end,
         filter = {
           default = {
             'String',
@@ -138,12 +145,12 @@ return {
           Function = { icon = '', hl = 'Function' },
           Variable = { icon = '', hl = 'Constant' },
           Constant = { icon = '', hl = 'Constant' },
-          String = { icon = '𝓐', hl = 'String' },
+          String = { icon = '𝓐', hl = 'OutlineIcon' },
           Number = { icon = '#', hl = 'Number' },
           Boolean = { icon = '⊨', hl = 'Boolean' },
           Array = { icon = '󰅪', hl = 'Constant' },
           Object = { icon = '⦿', hl = 'Type' },
-          Key = { icon = '🔐', hl = 'Type' },
+          Key = { icon = '⚿', hl = 'Type' },
           Null = { icon = 'NULL', hl = 'Type' },
           EnumMember = { icon = '', hl = 'Identifier' },
           Struct = { icon = '𝓢', hl = 'Structure' },

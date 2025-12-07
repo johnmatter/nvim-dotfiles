@@ -29,6 +29,7 @@ _G.custom_cursorline_color = "#18573e"
 _G.custom_cursorline_fg = "#cac0ae"
 _G.custom_visual_fg = "#cac0ae"
 _G.custom_visual_bg = "#4c7842"
+_G.custom_outline_icon = "#89b482"
 
 vim.api.nvim_set_hl(0, "CursorLine", {
   fg = _G.custom_cursorline_fg,
@@ -43,6 +44,11 @@ vim.api.nvim_set_hl(0, "Visual", {
 -- This prevents #ifdef blocks from being dimmed while keeping other semantic tokens
 vim.api.nvim_set_hl(0, "@lsp.type.comment.cpp", {})
 
+-- Use normal text color for outline.nvim current item (instead of bright green)
+vim.api.nvim_set_hl(0, "OutlineCurrent", { link = "Normal" })
+-- Custom highlight for outline.nvim icons
+vim.api.nvim_set_hl(0, "OutlineIcon", { fg = _G.custom_outline_icon })
+
 vim.api.nvim_create_autocmd("ColorScheme", {
   callback = function()
     vim.api.nvim_set_hl(0, "CursorLine", {
@@ -55,6 +61,9 @@ vim.api.nvim_create_autocmd("ColorScheme", {
     })
     -- Reapply LSP comment token override after colorscheme change
     vim.api.nvim_set_hl(0, "@lsp.type.comment.cpp", {})
+    -- Reapply outline.nvim current item override
+    vim.api.nvim_set_hl(0, "OutlineCurrent", { link = "Normal" })
+    vim.api.nvim_set_hl(0, "OutlineIcon", { fg = _G.custom_outline_icon })
   end,
 })
 
