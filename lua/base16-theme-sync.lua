@@ -4,6 +4,65 @@ local M = {}
 -- Single source of truth for current theme
 M.theme_file = vim.fn.expand(vim.env.HOME .. '/.config/.theme')
 
+-- Parse kitty theme file to extract color values
+local function parse_kitty_theme_colors(theme_path)
+  local colors = {}
+  local lines = vim.fn.readfile(theme_path)
+  for _, line in ipairs(lines) do
+    local key, value = line:match("^(%S+)%s+(#%x+)")
+    if key and value then
+      colors[key] = value
+    end
+  end
+  return colors
+end
+
+-- Update aider config with theme colors
+local function update_aider_config(colors)
+  local aider_conf = vim.fn.expand(vim.env.HOME .. '/.aider.conf.yml')
+  local lines = {}
+
+  -- Read existing config if it exists
+  if vim.fn.filereadable(aider_conf) == 1 then
+    lines = vim.fn.readfile(aider_conf)
+  end
+
+  -- Define color mappings (dark-mode must be false for custom colors to work)
+  local aider_colors = {
+    ['dark-mode'] = 'false',
+    ['user-input-color'] = colors.color2,
+    ['assistant-output-color'] = colors.color4,
+    ['tool-output-color'] = colors.color6,
+    ['tool-error-color'] = colors.color1,
+    ['tool-warning-color'] = colors.color3,
+    ['completion-menu-color'] = colors.foreground,
+    ['completion-menu-bg-color'] = colors.color0,
+  }
+
+  -- Remove existing color lines and add new ones
+  local new_lines = {}
+  for _, line in ipairs(lines) do
+    local key = line:match("^([%w-]+):")
+    if not (key and aider_colors[key]) then
+      table.insert(new_lines, line)
+    end
+  end
+
+  -- Add color settings
+  for key, value in pairs(aider_colors) do
+    if value then
+      -- dark-mode is a boolean, colors need quotes
+      if key == 'dark-mode' then
+        table.insert(new_lines, key .. ": " .. value)
+      else
+        table.insert(new_lines, key .. ": '" .. value .. "'")
+      end
+    end
+  end
+
+  vim.fn.writefile(new_lines, aider_conf)
+end
+
 -- Function to get available base16 themes
 function M.get_available_themes()
   local themes = {}
@@ -93,6 +152,12 @@ function M.set_theme(theme_name)
     end)
 
     if kitty_success then
+      -- Update aider config with theme colors
+      local theme_colors = parse_kitty_theme_colors(final_kitty_path)
+      if theme_colors.color0 then
+        update_aider_config(theme_colors)
+      end
+
       -- Try to apply via remote control (non-blocking)
       vim.loop.spawn('kitty', {
         args = {

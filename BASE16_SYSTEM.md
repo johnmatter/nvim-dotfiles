@@ -19,49 +19,56 @@ This is a sophisticated cross-application theme synchronization system that main
 ### File Structure
 
 ```
-~/.config/nvim/
-├── init.lua                          # Theme initialization & custom highlights
-├── lua/
-│   ├── base16-theme-sync.lua        # Core theme synchronization module
-│   └── plugins/
-│       ├── base16.lua               # Base16 colorscheme plugin config
-│       └── telescope.lua            # Interactive theme picker
-└── .config/
-    ├── .theme                        # Single source of truth (theme name)
-    ├── kitty/
-    │   └── theme.conf               # Generated Kitty theme config
-    ├── base16-kitty/
-    │   └── colors/
-    │       └── base16-*.conf        # 466 theme files (233 themes)
-    └── base16-shell/
-        └── scripts/
-            └── base16-*.sh          # Shell scripts for terminal colors
+~/.config/
+├── .theme                            # Single source of truth (theme name)
+├── nvim/
+│   ├── init.lua                      # Theme initialization & custom highlights
+│   └── lua/
+│       ├── base16-theme-sync.lua     # Core theme synchronization module
+│       └── plugins/
+│           ├── base16.lua            # Base16 colorscheme plugin config
+│           └── telescope.lua         # Interactive theme picker
+├── kitty/
+│   └── theme.conf                    # Generated Kitty theme config
+├── base16-kitty/
+│   └── colors/
+│       └── base16-*.conf             # 466 theme files (233 themes)
+├── base16-shell/
+│   └── scripts/
+│       └── base16-*.sh               # Shell scripts for terminal colors
+└── fish/
+    ├── config.fish                   # Fish startup config (calls base16_theme)
+    └── functions/
+        └── base16_theme.fish         # Fish function for theme application
 ```
 
 ### Data Flow
 
 ```
-┌─────────────────────────────────────────────────┐
-│          Single Source of Truth                 │
-│          ~/.config/.theme                       │
-└─────────────┬───────────────────────────────────┘
-              │
-              │ read on startup / write on change
-              │
-┌─────────────▼───────────────────────────────────┐
-│       base16-theme-sync.lua (Core Module)       │
-│  • get_available_themes()                       │
-│  • get_current_theme()                          │
-│  • set_theme(name)                              │
-│  • initialize_theme()                           │
-└─────┬──────────────┬──────────────┬─────────────┘
-      │              │              │
-      ▼              ▼              ▼
-┌─────────┐    ┌─────────┐    ┌─────────┐
-│ Neovim  │    │  Kitty  │    │  Fish   │
-│ vim.cmd │    │ remote  │    │  bash   │
-└─────────┘    └─────────┘    └─────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                  Single Source of Truth                          │
+│                  ~/.config/.theme                                │
+└───────────────┬───────────────────────────────┬──────────────────┘
+                │                               │
+                │ read on startup               │ read on startup
+                │                               │
+┌───────────────▼──────────────────┐  ┌────────▼─────────────────┐
+│ base16-theme-sync.lua (Neovim)   │  │ base16_theme.fish (Fish) │
+│ • get_available_themes()         │  │ • Sources base16-shell   │
+│ • get_current_theme()            │  │ • Applies Kitty theme    │
+│ • set_theme(name)                │  │ • Called on shell start  │
+│ • initialize_theme()             │  │                          │
+└───┬──────────────┬───────────┬───┘  └──────────┬───────────────┘
+    │              │           │                  │
+    ▼              ▼           ▼                  ▼
+┌────────┐   ┌─────────┐  ┌────────┐        ┌─────────┐
+│ Neovim │   │  Kitty  │  │  Fish  │        │  Kitty  │
+│vim.cmd │   │ remote  │  │  bash  │        │ remote  │
+└────────┘   └─────────┘  └────────┘        └─────────┘
 ```
+
+Both Neovim and Fish independently read from the same source of truth, providing
+redundant theme application paths.
 
 ---
 
@@ -115,7 +122,7 @@ local current = require('base16-theme-sync').get_current_theme()
 -- Returns: "gruvbox-material-dark-hard"
 ```
 
-#### `M.set_theme(theme_name)` (Lines 57-132)
+#### `M.set_theme(theme_name)` (Lines 57-131)
 
 **Purpose**: Core function that applies theme across all applications
 
@@ -170,7 +177,7 @@ require('base16-theme-sync').set_theme('nord')
 - **Scheduled execution** (line 137): Avoids fast event context issues
 - Calls `get_current_theme()` then `set_theme()`
 
-**Called from**: `init.lua` line 63
+**Called from**: `init.lua` line 72
 
 #### `M.create_theme_preview(theme_name)` (Lines 143-179)
 
@@ -188,25 +195,27 @@ require('base16-theme-sync').set_theme('nord')
 
 ## Initialization: `init.lua`
 
-### Custom Highlight Configuration (Lines 27-59)
+### Custom Highlight Configuration (Lines 27-68)
 
-#### Global Highlight Variables (Lines 28-31)
+#### Global Highlight Variables (Lines 28-32)
 
 ```lua
 _G.custom_cursorline_color = "#18573e"
 _G.custom_cursorline_fg = "#cac0ae"
 _G.custom_visual_fg = "#cac0ae"
 _G.custom_visual_bg = "#4c7842"
+_G.custom_outline_icon = "#89b482"
 ```
 
 These global variables persist across colorscheme changes and are used by the autocmd.
 
-#### Initial Application (Lines 33-44)
+#### Initial Application (Lines 34-50)
 
 - Sets `CursorLine` and `Visual` highlight groups
 - Disables LSP semantic token highlighting for C++ comments
+- Sets `OutlineCurrent` (links to Normal) and `OutlineIcon` (custom foreground color)
 
-#### Persistence Mechanism (Lines 46-59)
+#### Persistence Mechanism (Lines 52-68)
 
 **The Challenge**: Custom highlights are lost when colorscheme changes
 
@@ -219,16 +228,16 @@ vim.api.nvim_create_autocmd("ColorScheme", {
       fg = _G.custom_cursorline_fg,
       bg = _G.custom_cursorline_color
     })
-    -- ... other highlights
+    -- ... other highlights including OutlineCurrent and OutlineIcon
   end,
 })
 ```
 
 This ensures custom colors persist after every theme switch.
 
-### Theme System Integration (Lines 61-76)
+### Theme System Integration (Lines 70-85)
 
-#### Module Loading (Lines 62-63)
+#### Module Loading (Lines 70-72)
 
 ```lua
 local theme_sync = require('base16-theme-sync')
@@ -237,7 +246,7 @@ theme_sync.initialize_theme()
 
 Loads theme sync module and immediately initializes theme from persisted state.
 
-#### Manual Theme Command (Lines 68-76)
+#### Manual Theme Command (Lines 76-85)
 
 ```vim
 :SetTheme <theme-name>
@@ -258,7 +267,7 @@ Loads theme sync module and immediately initializes theme from persisted state.
 
 ## Telescope Integration: `lua/plugins/telescope.lua`
 
-### Interactive Theme Picker (Lines 124-201)
+### Interactive Theme Picker (Lines 124-203)
 
 #### Function: `theme_picker()` (Lines 125-198)
 
@@ -564,6 +573,69 @@ bash ~/.config/base16-shell/scripts/base16-<theme>.sh
 - screen
 - iTerm2 (detection in script)
 
+### Fish Shell Independent Theme Application
+
+The Fish shell has its own independent theme application path that reads from the same source of truth, creating a dual-path architecture where both Neovim and Fish can independently apply themes.
+
+#### `base16_theme.fish` Function
+
+**Location**: `~/.config/fish/functions/base16_theme.fish`
+
+**Purpose**: Applies the Base16 theme from the source of truth file when Fish starts
+
+**Implementation**:
+1. Reads theme name from `~/.config/.theme`
+2. Sources the corresponding base16-shell script
+3. Additionally applies the Kitty theme via `kitty @ set-colors`
+
+**Called from**: `~/.config/fish/config.fish` (line 46) on Fish shell startup
+
+**Benefits**:
+- New terminal windows get correct theme without Neovim
+- Theme persists across shell sessions independently
+- Provides redundancy if Neovim theme application fails
+
+#### `sync_fish_colors_with_kitty` Function
+
+**Location**: `~/.config/fish/config.fish` (lines 14-34)
+
+**Purpose**: Sets Fish's internal color variables based on Kitty's theme.conf
+
+**Mechanism**:
+- Reads color values from `~/.config/kitty/theme.conf`
+- Sets Fish universal color variables (`fish_color_*`)
+- Called on Fish shell startup
+
+**Color Mappings**:
+- `foreground` → `fish_color_normal`, `fish_color_command`
+- `color1` (red) → `fish_color_error`
+- `color2` (green) → `fish_color_quote`
+- `color3` (yellow) → `fish_color_comment`
+- `color4` (blue) → `fish_color_param`
+- And other standard Fish color variables
+
+**Note**: This is separate from base16-shell scripts and provides Fish-specific syntax highlighting colors.
+
+### Dual-Path Theme Application
+
+```
+Theme Source: ~/.config/.theme
+        │
+        ├───────────────────────┐
+        │                       │
+        ▼                       ▼
+    Neovim Path             Fish Path
+        │                       │
+        ▼                       ▼
+base16-theme-sync.lua    base16_theme.fish
+        │                       │
+        ├── Neovim colorscheme  ├── base16-shell script
+        ├── Kitty theme.conf    └── kitty @ set-colors
+        └── base16-shell script
+```
+
+Both paths read from the same source of truth, ensuring consistency regardless of which application applies the theme first.
+
 ### Neovim ↔ Neovim (Persistence)
 
 **Write**: `~/.config/.theme` (single line with theme name)
@@ -734,7 +806,7 @@ Result:
 
 **Challenge**: Custom highlights lost on ColorScheme event
 
-**Solution** (`init.lua` lines 46-59):
+**Solution** (`init.lua` lines 52-68):
 ```lua
 vim.api.nvim_create_autocmd("ColorScheme", {
   callback = function()
@@ -748,6 +820,9 @@ vim.api.nvim_create_autocmd("ColorScheme", {
     })
     -- Disable LSP semantic highlighting for C++ comments
     vim.api.nvim_set_hl(0, "@lsp.type.comment.cpp", { link = "" })
+    -- Outline plugin highlights
+    vim.api.nvim_set_hl(0, "OutlineCurrent", { link = "Normal" })
+    vim.api.nvim_set_hl(0, "OutlineIcon", { fg = _G.custom_outline_icon })
   end,
 })
 ```
@@ -755,7 +830,7 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 **Key Points**:
 - **Global storage**: `_G.*` variables persist across events
 - **Autocmd**: Reapplies after every colorscheme change
-- **Applied to**: CursorLine, Visual, @lsp.type.comment.cpp
+- **Applied to**: CursorLine, Visual, @lsp.type.comment.cpp, OutlineCurrent, OutlineIcon
 
 ---
 
@@ -1024,7 +1099,7 @@ cat ~/.config/.theme
 
 **Diagnosis**: Check if ColorScheme autocmd is set up in `init.lua`
 
-**Solution**: Ensure autocmd is present (lines 46-59 in init.lua)
+**Solution**: Ensure autocmd is present (lines 52-68 in init.lua)
 
 #### 256 variant not preferred
 
