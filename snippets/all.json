@@ -1,4 +1,8 @@
 {
+  "Todo Item": {
+    "prefix": "td",
+    "body": "- [ ] $1"
+  },
   "Guitar Tab": {
     "prefix": "tab",
     "body": [
