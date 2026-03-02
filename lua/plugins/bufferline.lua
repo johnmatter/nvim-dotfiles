@@ -47,7 +47,7 @@ return {
       -- Define mapping rules based on highlight group patterns
       local highlight_mapping = {
         -- Selected/active elements
-        { pattern = "Selected", link = "FloatTitle" },
+        { pattern = "Selected", link = "CursorLine" },
         { pattern = "Pick", link = "Function" },
         { pattern = "Indicator", link = "Function" },
 
@@ -76,12 +76,14 @@ return {
       -- print("Found BufferLine highlights:", vim.inspect(all_highlights))
     end
 
-    -- Apply colors immediately
-    set_bufferline_colors()
+    -- Apply colors immediately, deferred to catch highlights created during first render
+    vim.schedule(set_bufferline_colors)
 
-    -- Ensure it works when switching colorschemes
-    vim.api.nvim_create_autocmd("ColorScheme", {
-      callback = set_bufferline_colors,
+    -- Reapply on colorscheme changes and when new tabs create new DevIcon highlights
+    vim.api.nvim_create_autocmd({ "ColorScheme", "TabNew", "TabEnter" }, {
+      callback = function()
+        vim.schedule(set_bufferline_colors)
+      end,
     })
   end
 }
