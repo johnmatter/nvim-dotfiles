@@ -26,8 +26,9 @@ local function update_matplotlibrc(colors)
   end
   local bg = q(colors.background or colors.color0)
   local fg = q(colors.foreground or colors.color7)
+  local cycle_order = { 1, 4, 3, 2, 5, 6 } -- red, blue, yellow, green, magenta, cyan
   local cycle_colors = {}
-  for i = 1, 6 do
+  for _, i in ipairs(cycle_order) do
     if colors['color' .. i] then
       table.insert(cycle_colors, q(colors['color' .. i]))
     end
@@ -53,6 +54,14 @@ local function update_matplotlibrc(colors)
     'grid.color: ' .. grid,
     'legend.facecolor: ' .. bg,
     'legend.edgecolor: ' .. grid,
+    '',
+    '# Boxplot',
+    'boxplot.boxprops.color: ' .. fg,
+    'boxplot.whiskerprops.color: ' .. fg,
+    'boxplot.capprops.color: ' .. fg,
+    'boxplot.medianprops.color: ' .. fg,
+    'boxplot.flierprops.color: ' .. fg,
+    'boxplot.flierprops.markeredgecolor: ' .. fg,
   }
   vim.fn.writefile(lines, rc_path)
 end

@@ -16,6 +16,7 @@ return {
       sources = {
         explorer = {
           hidden = true, -- Show hidden files by default
+          ignored = true, -- Show gitignored files
           layout = {
             layout = {
               width = 25,

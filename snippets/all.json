@@ -13,5 +13,24 @@
       "A-------------------------------------------------------------------------------",
       "E-------------------------------------------------------------------------------"
     ]
+  },
+  "ml-console-app": {
+    "prefix": "ml-console-app",
+    "body": [
+      "struct SineExampleState { SineGen<float> s1, s2; };",
+      "",
+      "void sineProcess(AudioContext* ctx, void *state) {",
+      "  auto s = static_cast<SineExampleState*>(state);",
+      "  ctx->outputs[0] = s->s1(220.f/kSampleRate) * kOutputGain;",
+      "  ctx->outputs[1] = s->s2(275.f/kSampleRate) * kOutputGain;",
+      "}",
+      "",
+      "int main() {",
+      "  SineExampleState state;",
+      "  AudioContext ctx(0, 2, 48000);",
+      "  AudioTask sineExample(&ctx, sineProcess, &state);",
+      "  return sineExample.runConsoleApp();",
+      "}"
+    ]
   }
 }

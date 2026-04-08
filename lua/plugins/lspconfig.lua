@@ -220,7 +220,15 @@ return {
         }
       },
       -- gopls = {},
-      -- pyright = {},
+      pyright = {
+        settings = {
+          python = {
+            analysis = {
+              extraPaths = { '/Users/matter/coldtype/coldtype/src' },
+            },
+          },
+        },
+      },
       -- rust_analyzer = {},
       -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
       --
@@ -307,6 +315,19 @@ return {
       },
 
       ts_ls = {},
+
+      yamlls = {
+        settings = {
+          yaml = {
+            schemaStore = {
+              enable = false,
+              url = '',
+            },
+            schemas = require('schemastore').yaml.schemas(),
+            validate = true,
+          },
+        },
+      },
 
     }
 
