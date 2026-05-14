@@ -343,40 +343,17 @@ return {
     })
     require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
+    -- Register per-server config via nvim 0.11 native API.
+    -- mason-lspconfig v2 removed the `handlers` block; `automatic_enable`
+    -- (default true) will call vim.lsp.enable() for each installed server.
+    for server_name, server in pairs(servers) do
+      server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
+      vim.lsp.config(server_name, server)
+    end
+
     require('mason-lspconfig').setup {
       ensure_installed = {},
       automatic_installation = false,
-      handlers = {
-        function(server_name)
-          local server = servers[server_name] or {}
-          server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-          
-          -- Add buffer filtering to prevent LSP attachment to special buffers
-          local original_on_attach = server.on_attach
-          server.on_attach = function(client, bufnr)
-            local bufname = vim.api.nvim_buf_get_name(bufnr)
-            local filetype = vim.bo[bufnr].filetype
-            
-            -- Stop LSP for special buffers
-            if bufname:match('diffview://') or 
-               bufname:match('^diffview:') or 
-               bufname:match('^fugitive://') or
-               bufname:match('^oil://') or
-               filetype:match('Diffview') or
-               filetype:match('^git') then
-              client.stop()
-              return
-            end
-            
-            -- Call original on_attach if it exists
-            if original_on_attach then
-              original_on_attach(client, bufnr)
-            end
-          end
-          
-          require('lspconfig')[server_name].setup(server)
-        end,
-      },
     }
 
     -- Formatting command aliases

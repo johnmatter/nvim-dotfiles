@@ -12,6 +12,9 @@ vim.g.project_root = vim.fn.getcwd()
 vim.opt.foldlevel = 99
 vim.opt.foldlevelstart = 3
 vim.opt.foldnestmax = 5
+vim.opt.foldmethod = "expr"
+vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+vim.opt.foldtext = ""
 
 -- plugins
 require('config.lazy')
@@ -224,6 +227,7 @@ end, {})
 -- Toggle clean UI mode: git blame virtual text and diagnostics virtual text
 local ui_clean_mode = false
 local saved_diagnostic_virt_text = nil
+local saved_diagnostic_underline = nil
 
 vim.keymap.set('n', '<leader>u', function()
   ui_clean_mode = not ui_clean_mode
@@ -239,12 +243,14 @@ vim.keymap.set('n', '<leader>u', function()
     if current_config.virtual_text then
       saved_diagnostic_virt_text = current_config.virtual_text
     end
-    vim.diagnostic.config({ virtual_text = false })
+    saved_diagnostic_underline = current_config.underline
+    vim.diagnostic.config({ virtual_text = false, underline = false })
   else
     -- Turning clean mode OFF: restore saved config
     if saved_diagnostic_virt_text then
       vim.diagnostic.config({ virtual_text = saved_diagnostic_virt_text })
     end
+    vim.diagnostic.config({ underline = saved_diagnostic_underline ~= nil and saved_diagnostic_underline or true })
   end
 
   -- Show notification
@@ -370,6 +376,7 @@ vim.keymap.set('n', '<leader>q', ':q<cr>')
 vim.keymap.set('n', '<leader>x', ':qa<cr>')
 vim.keymap.set('n', '<leader>w', ':w<cr>')
 vim.keymap.set('n', '<leader>tn', ':tabnew<cr>')
+vim.keymap.set('n', '<leader>z', 'za', { desc = 'Toggle fold' })
 
 -- Duplicate current tab with all windows/splits
 local function duplicate_tab()

@@ -11,6 +11,15 @@ return {
     lazygit = {},
     explorer = {
       enabled = true,
+      hidden = true,
+      ignored = true,
+      exclude = { ".claude", "CLAUDE.md" },
+      layout = {
+        layout = {
+          width = 25,
+          min_width = 10,
+        }
+      },
     },
     picker = {
       sources = {

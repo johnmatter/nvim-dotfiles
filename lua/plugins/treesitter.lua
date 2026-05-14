@@ -1,31 +1,19 @@
 return {
   'nvim-treesitter/nvim-treesitter',
-  event = { "BufReadPost", "BufNewFile" }, -- Load after buffer is ready
+  branch = 'main',
+  lazy = false,
   build = ':TSUpdate',
-  main = 'nvim-treesitter.configs',
-  opts = {
-    ensure_installed = {
-      'bash',
-      'c',
-      'cpp',
-      'diff',
-      'gdscript',
-      'html',
-      'lua',
-      'luadoc',
-      'markdown',
-      'markdown_inline',
-      'python',
-      'query',
-      'supercollider',
-      'vim',
-      'vimdoc',
-    },
-    auto_install = true,
-    highlight = {
-      enable = true,
-      additional_vim_regex_highlighting = { 'ruby' },
-    },
-    indent = { enable = true, disable = { 'ruby' } },
-  },
+  config = function()
+    require('nvim-treesitter').setup()
+    require('nvim-treesitter').install({
+      'bash', 'c', 'cpp', 'diff', 'gdscript', 'html', 'lua', 'luadoc',
+      'markdown', 'markdown_inline', 'python', 'query', 'supercollider',
+      'vim', 'vimdoc',
+    })
+    -- Enable treesitter highlighting for filetypes not handled by Neovim's ftplugins
+    vim.api.nvim_create_autocmd('FileType', {
+      pattern = { 'sh', 'c', 'cpp', 'diff', 'gdscript', 'html', 'python', 'supercollider', 'vim' },
+      callback = function() pcall(vim.treesitter.start) end,
+    })
+  end,
 }

@@ -12,11 +12,11 @@ return {
       end, 20)
     end
 
-    vim.keymap.set("n", "<F4>", function()
+    vim.keymap.set("n", "<F6>", function()
       feed_and_save("<Plug>(dial-increment)")
     end, { noremap = true })
 
-    vim.keymap.set("n", "<F3>", function()
+    vim.keymap.set("n", "<F5>", function()
       feed_and_save("<Plug>(dial-decrement)")
     end, { noremap = true })
 
